@@ -23,8 +23,7 @@ Make sure you have the following installed:
 
 1. Clone the repository:
     ```bash
-    git clone [https://github.com/your-username/tpm-synchronization.git](https://github.com/MCamps22/SincTPMs.git)
-    cd tpm-synchronization
+    git clone https://github.com/MCamps22/SincTPMs.git
     ```
 
 
