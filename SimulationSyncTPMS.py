@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
+
 import random, math
 import numpy as np
 from datetime import datetime
 import csv
 import hashlib
 import json
-
-
 
 "Parameters of a TPM: "
 "k : number of hidden units"
@@ -45,16 +44,24 @@ def areDifferentFunction(v, u):
     else:
         return True
 
-def stimulusGenerator():
+def stimulusGeneratorNonBinary():
+   return random.choice([-3, -2, -1, 1, 2, 3])
+
+def stimulusGeneratorBinary():
     if random.randint(0, 1) == 0:
         return -1
     else:
         return 1
 
-def stimulusVectorGenerator(n):
+
+def stimulusVectorGenerator(n,stimulusBinary):
     estimulus = []
-    for i in range(n):
-        estimulus = estimulus + [stimulusGenerator()]
+    if stimulusBinary:
+        for i in range(n):
+            estimulus = estimulus + [stimulusGeneratorBinary()]
+    else:
+        for i in range(n):
+            estimulus = estimulus + [stimulusGeneratorNonBinary()]
     return estimulus
 
 def weigthGerator(l):
@@ -157,7 +164,26 @@ def generate_matrix_and_vector(weitTPM, valueL):
     return matrix, vector_transpose
 
 
+#Polinomial
+def get_k_values(N, K):
+    len_K = max(N, K)
+    k_values = list(range(1, len_K + 1)) 
+    return k_values
+
+def calculate_P(K, N, weights, k_values):
+    P = 0
+    for i in range(K):
+        inner_sum = 0
+        for j in range(N):
+
+            inner_sum += weights[i][j] ** (2 * k_values[j] + 1)
+    
+        P += inner_sum ** (2 * k_values[i] + 1)
+    return P
+
 #--- Main ---
+
+
 
 #Input of the architecture to be used in the simulation
 print('Enter the parameters of TPMs....')
@@ -167,6 +193,17 @@ print('n: number of inputs neurons')
 n = int(input())
 print('l: range of discrete weigths')
 l = int(input())
+
+use_stimulus_binary = True
+stimulus_type = input("Do you want to use binary stimuli (only -1 or 1)? (Yes[Y] / No[N]): ").strip().lower()
+if stimulus_type == 'y':
+    use_stimulus_binary = True
+    print("Binary stimuli selected: -1 or 1.")
+else:
+    use_stimulus_binary = False
+    print("Non-binary stimuli selected: -3, -2, -1, 1, 2, 3")
+
+
 
 
 #Global Variables
@@ -194,12 +231,13 @@ matriz_b = np.array([[0]])
 #Input learning rule
 print('Select learning rule:')
 print(' 1. Hebbian Learning Rule','2. AntiHebbian Learning Rule', '3. Random-Walk Learning Rule', sep = '   ' )
+
 chosenLearRule = int(input())
 nameRule= switch_case_rule(chosenLearRule)
 
-#Input learning rule
+
 print('Select verification algorithm:')
-print(' 1. Matriz ','2. Hash', sep = '   ' )
+print('1. Polinomial','2. Hash',' 3. Matriz ', sep = '   ' )
 chosenAlgorithm = int(input())
 
 print('Empty weitTPMA = ', weitTPMA)
@@ -223,16 +261,19 @@ def synchroTPMs(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
     
     # The following cycle generates the random stimulus vectors
     for i in range(k):
-        stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n)]
+        stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n,use_stimulus_binary)]
     stimuTPMB = stimuTPMA
     # The following cycle generates the random weigths vectors
     for i in range(k):
         weitTPMA = weitTPMA + [weigthsVectorhGerator(n, l)]
         weitTPMB = weitTPMB + [weigthsVectorhGerator(n, l)]
+    
+    print("Using matrix-based verification method")
     print('Initial stimuTPMA = ', stimuTPMA)
     print('Initial stimuTPMB = ', stimuTPMB)
     print('Initial weitTPMA = ', weitTPMA)
     print('Initial weitTPMB = ', weitTPMB)
+    
    
     for i in range(k):
         sigmaA.append(outputSigmaFunction(localFieldFunction(n, stimuTPMA[i], weitTPMA[i])))
@@ -274,7 +315,7 @@ def synchroTPMs(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
         stimuTPMB = []
         # The following cycle generates the random stimulus vectors
         for i in range(k):
-            stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n)]
+            stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n,use_stimulus_binary)]
             stimuTPMB = stimuTPMA
         sigmaA = []
         sigmaB = []
@@ -298,6 +339,10 @@ def synchroTPMs(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
     matriz_b, vector_b = generate_matrix_and_vector(weitTPMB,l)
     resMatrizTpmA = np.dot(vector_a,matriz_a)
     resMatrizTpmB = np.dot(vector_b,matriz_b)
+    
+    print("Result of TPM A verification method:" , resMatrizTpmA)
+    print("Result of TPM B verification method:" , resMatrizTpmB)
+    
     if not(np.array_equal(resMatrizTpmA,resMatrizTpmB)):
         numFalsosNegativos+=1
         
@@ -315,12 +360,14 @@ def synchroTPMsHash(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
     
     # The following cycle generates the random stimulus vectors
     for i in range(k):
-        stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n)]
+        stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n,use_stimulus_binary)]
     stimuTPMB = stimuTPMA
     # The following cycle generates the random weigths vectors
     for i in range(k):
         weitTPMA = weitTPMA + [weigthsVectorhGerator(n, l)]
         weitTPMB = weitTPMB + [weigthsVectorhGerator(n, l)]
+    
+    print("Using Hash verification method")
     print('Initial stimuTPMA = ', stimuTPMA)
     print('Initial stimuTPMB = ', stimuTPMB)
     print('Initial weitTPMA = ', weitTPMA)
@@ -336,36 +383,126 @@ def synchroTPMsHash(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
     j = 0
     while areDifferentFunction(weitTPMA, weitTPMB):
 
-        # HASH PART A ------
-        # Convert the list to a JSON string
-        listA_json = json.dumps(weitTPMA)
-        
-        # Create a hash object using the SHA-1 algorithm
-        hash_objectA = hashlib.sha1()
-        
-        # Update the hash object with the JSON string
-        hash_objectA.update(listA_json.encode('utf-8'))
-        
-        # Get the hash in hexadecimal format
-        hash_hexA = hash_objectA.hexdigest()
-        
-        # HASH PART B ------
-        # Convert the list to a JSON string
-        listB_json = json.dumps(weitTPMB)
-        
-        # Create a hash object using the SHA-1 algorithm
-        hash_objectB = hashlib.sha1()
-        
-        # Update the hash object with the JSON string
-        hash_objectB.update(listB_json.encode('utf-8'))
-        
-        # Get the hash in hexadecimal format
-        hash_hexB = hash_objectB.hexdigest()
 
+        listA_json = json.dumps(weitTPMA)
+        hash_objectA = hashlib.sha1()
+        hash_objectA.update(listA_json.encode('utf-8'))
+        hash_hexA = hash_objectA.hexdigest() 
+
+        listB_json = json.dumps(weitTPMB)
+        hash_objectB = hashlib.sha1()
+        hash_objectB.update(listB_json.encode('utf-8'))
+        hash_hexB = hash_objectB.hexdigest()
         
         if  hash_hexA ==  hash_hexB:
             numFalsosPositivos= numFalsosPositivos+1
+
+        if thauA == thauB:  # The weights must be adjusted according to the used learning rule.
+            numAjustes=numAjustes+1
+            for i in range(k):
+                if sigmaA[i] == thauA:
+           
+                    if learRule == 1:
+                        weitTPMA[i] = hebbianLearningRule(thauA, thauB, stimuTPMA[i], weitTPMA[i])
+                    elif learRule == 2:
+                        weitTPMA[i] = antiHebbianLearningRule(thauA, thauB, stimuTPMA[i], weitTPMA[i])
+                    else:
+                        weitTPMA[i] = randomWalkLearningRule(thauA, thauB, stimuTPMA[i], weitTPMA[i])
+                if sigmaB[i] == thauB:
+                  
+                    if learRule == 1:
+                        weitTPMB[i] = hebbianLearningRule(thauA, thauB, stimuTPMB[i], weitTPMB[i])
+                    elif learRule == 2:
+                        weitTPMB[i] = antiHebbianLearningRule(thauA, thauB, stimuTPMB[i], weitTPMB[i])
+                    else:
+                        weitTPMB[i] = randomWalkLearningRule(thauA, thauB, stimuTPMB[i], weitTPMB[i])
+
+        stimuTPMA = []
+        stimuTPMB = []
+        # The following cycle generates the random stimulus vectors
+        for i in range(k):
+            stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n,use_stimulus_binary)]
+            stimuTPMB = stimuTPMA
+        sigmaA = []
+        sigmaB = []
+        # The following cycle generates the outputs of each hidden neuron
+        for i in range(k):
+            sigmaA.append(outputSigmaFunction(localFieldFunction(n, stimuTPMA[i], weitTPMA[i])))
+            sigmaB.append(outputSigmaFunction(localFieldFunction(n, stimuTPMB[i], weitTPMB[i])))
+        # The following variables contains the total outputs of each net.
+        thauA = thauFunction(sigmaA)
+        thauB = thauFunction(sigmaB)
+        j = j + 1
         
+    
+     
+    print('---- Iterations number = ', j)
+    print('Final weitTPMA = ', weitTPMA)
+    print('Final weitTPMB = ', weitTPMB)
+    print('General Adjustments = ',numAjustes)
+    
+    listA_json = json.dumps(weitTPMA)
+    hash_objectA = hashlib.sha1()
+    hash_objectA.update(listA_json.encode('utf-8'))
+    hash_hexA = hash_objectA.hexdigest()
+
+    listB_json = json.dumps(weitTPMB)
+    hash_objectB = hashlib.sha1()
+    hash_objectB.update(listB_json.encode('utf-8'))
+    hash_hexB = hash_objectB.hexdigest()
+    
+    print("Result of TPM A verification method:" , hash_hexA)
+    print("Result of TPM B verification method:" , hash_hexB)
+    
+    if not(hash_hexA ==  hash_hexB):
+        numFalsosNegativos+=1
+        
+    return weitTPMA,numAjustes,numFalsosPositivos,j,numFalsosNegativos
+
+def synchroTPMsPolinomial(k, n, l, learRule,weitTPMA, weitTPMB , countSync, k_values):
+    sigmaA = []
+    sigmaB = []
+    stimuTPMA = []
+    stimuTPMB = []
+
+    numAjustes=0
+    numFalsosPositivos=0
+    numFalsosNegativos=0
+    
+    # The following cycle generates the random stimulus vectors
+    for i in range(k):
+        stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n,use_stimulus_binary)]
+    stimuTPMB = stimuTPMA
+    # The following cycle generates the random weigths vectors
+    for i in range(k):
+        weitTPMA = weitTPMA + [weigthsVectorhGerator(n, l)]
+        weitTPMB = weitTPMB + [weigthsVectorhGerator(n, l)]
+    print("Using Polinomial verification method")
+    print('Initial stimuTPMA = ', stimuTPMA)
+    print('Initial stimuTPMB = ', stimuTPMB)
+    print('Initial weitTPMA = ', weitTPMA)
+    print('Initial weitTPMB = ', weitTPMB)
+   
+    for i in range(k):
+        sigmaA.append(outputSigmaFunction(localFieldFunction(n, stimuTPMA[i], weitTPMA[i])))
+        sigmaB.append(outputSigmaFunction(localFieldFunction(n, stimuTPMB[i], weitTPMB[i])))
+
+    thauA = thauFunction(sigmaA)
+    thauB = thauFunction(sigmaB)
+  
+    j = 0
+    while areDifferentFunction(weitTPMA, weitTPMB):
+        
+        
+        #POLINOMIAL TPM A -----
+        p_calculate_A=calculate_P(k, n, weitTPMA, k_values)
+        
+        #POLINOMIAL TPM B -----
+        p_calculate_B=calculate_P(k, n, weitTPMB, k_values)
+        
+        
+        if  p_calculate_A ==  p_calculate_B:
+            numFalsosPositivos= numFalsosPositivos+1
         
         if thauA == thauB:  # The weights must be adjusted according to the used learning rule.
             numAjustes=numAjustes+1
@@ -391,7 +528,7 @@ def synchroTPMsHash(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
         stimuTPMB = []
         # The following cycle generates the random stimulus vectors
         for i in range(k):
-            stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n)]
+            stimuTPMA = stimuTPMA + [stimulusVectorGenerator(n,use_stimulus_binary)]
             stimuTPMB = stimuTPMA
         sigmaA = []
         sigmaB = []
@@ -411,48 +548,36 @@ def synchroTPMsHash(k, n, l, learRule,weitTPMA, weitTPMB , countSync):
     print('Final weitTPMB = ', weitTPMB)
     print('General Adjustments = ',numAjustes)
     
-    # HASH PART A ------
-    # Convert the list to a JSON string
-    listA_json = json.dumps(weitTPMA)
+    #POLINOMIAL TPM A -----
+    p_calculate_A=calculate_P(k, n, weitTPMA, k_values)
     
-    # Create a hash object using the SHA-1 algorithm
-    hash_objectA = hashlib.sha1()
+    #POLINOMIAL TPM B -----
+    p_calculate_B=calculate_P(k, n, weitTPMB, k_values)
     
-    # Update the hash object with the JSON string
-    hash_objectA.update(listA_json.encode('utf-8'))
+    print("Result of TPM A verification method:" , p_calculate_A)
+    print("Result of TPM B verification method:" , p_calculate_B)
     
-    # Get the hash in hexadecimal format
-    hash_hexA = hash_objectA.hexdigest()
     
-    # HASH PART B ------
-    # Convert the list to a JSON string
-    listB_json = json.dumps(weitTPMB)
-    
-    # Create a hash object using the SHA-1 algorithm
-    hash_objectB = hashlib.sha1()
-    
-    # Update the hash object with the JSON string
-    hash_objectB.update(listB_json.encode('utf-8'))
-    
-    # Get the hash in hexadecimal format
-    hash_hexB = hash_objectB.hexdigest()
-
-    if not(hash_hexA ==  hash_hexB):
+    if not(p_calculate_A ==  p_calculate_B):
         numFalsosNegativos+=1
         
     return weitTPMA,numAjustes,numFalsosPositivos,j,numFalsosNegativos
 
-
-
 #Cicle Simulation
 
+
+if chosenAlgorithm == 3:
+    k_values = get_k_values(n,k)
+    
 for x in range (100):
     countSync=countSync+1
     print("N SINC: ", countSync)
-    if chosenAlgorithm == 1:
+    if chosenAlgorithm == 3:
         v,adjustmentsCount,falsePositivesCount,iterationsCount,falseNegativesCount = synchroTPMs(k, n, l,chosenLearRule,weitTPMA, weitTPMB,countSync)
     elif chosenAlgorithm == 2:
         v,adjustmentsCount,falsePositivesCount,iterationsCount,falseNegativesCount = synchroTPMsHash(k, n, l,chosenLearRule,weitTPMA, weitTPMB,countSync)
+    elif chosenAlgorithm == 1:
+        v,adjustmentsCount,falsePositivesCount,iterationsCount,falseNegativesCount = synchroTPMsPolinomial(k, n, l,chosenLearRule,weitTPMA, weitTPMB,countSync,k_values)
 
     list_iteraciones_por_Sync.append(iterationsCount)
     list_ajustes_por_Sync.append(adjustmentsCount)
@@ -464,19 +589,58 @@ for x in range (100):
     totalFalseNegativesCount=totalFalseNegativesCount+falseNegativesCount 
     
 
-# Define file paths for CSV files
-if chosenAlgorithm == 1:
-     file_path_resumen = f'Sync_Matrix_resumen_k{k}-N{n}-l{l}-{timestamp}.csv'
-     file_path_resumen_por_sync = f'Sync_Matrix_resumen_por_sync_k{k}-N{n}-l{l}-{timestamp}.csv'
 
+
+if chosenAlgorithm == 1:
+    file_path_resumen = f'Sync_Matrix_k{k}-N{n}-l{l}'
+    
+    if use_stimulus_binary:
+        file_path_resumen += '_binary'
+    else:
+        file_path_resumen += '_non_binary'
+    file_path_resumen += f'-{timestamp}.csv'
+    
+    file_path_resumen_por_sync = f'Sync_Matrix_x_sync_k{k}-N{n}-l{l}'
+    if use_stimulus_binary:
+        file_path_resumen_por_sync += '_binary'  
+    else:
+        file_path_resumen_por_sync += '_non_binary' 
+    file_path_resumen_por_sync += f'-{timestamp}.csv'
 
 elif chosenAlgorithm == 2:
+    file_path_resumen = f'Sync_Hash_k{k}-N{n}-l{l}'
+    
+    if use_stimulus_binary:
+        file_path_resumen += '_binary'
+    else:
+        file_path_resumen += '_non_binary'
+    file_path_resumen += f'-{timestamp}.csv'
+    
+    file_path_resumen_por_sync = f'Sync_Hash_x_sync_k{k}-N{n}-l{l}'
+    if use_stimulus_binary:
+        file_path_resumen_por_sync += '_binary'  
+    else:
+        file_path_resumen_por_sync += '_non_binary' 
+    file_path_resumen_por_sync += f'-{timestamp}.csv'
 
-     file_path_resumen = f'Sync_conHASH__resumen_k{k}-N{n}-l{l}-{timestamp}.csv'
-     file_path_resumen_por_sync = f'Sync_conHASH_1_resumen_por_sync_k{k}-N{n}-l{l}-{timestamp}.csv'
+elif chosenAlgorithm == 3:
+    file_path_resumen = f'Sync_Poli_k{k}-N{n}-l{l}'
+    
+    if use_stimulus_binary:
+        file_path_resumen += '_binary'
+    else:
+        file_path_resumen += '_non_binary'
+    file_path_resumen += f'-{timestamp}.csv'
+    
+    file_path_resumen_por_sync = f'Sync_Poli_x_sync_k{k}-N{n}-l{l}'
+    if use_stimulus_binary:
+        file_path_resumen_por_sync += '_binary'  
+    else:
+        file_path_resumen_por_sync += '_non_binary' 
+    file_path_resumen_por_sync += f'-{timestamp}.csv'
 
 columns_resumen = ['Total Synchronizations', 'Total Adjustments', 'Total False Positives', 'Total Successes', 'Total Iterations', 'Total False Negatives']
-#Hoja Resumen
+
 resumen_data = [countSync, totalAdjustmentsCount, totalFalsePositivesCount, countSync, totalIterationsCount, totalFalseNegativesCount]
 with open(file_path_resumen, mode='w', newline='') as file:
     writer = csv.writer(file)
