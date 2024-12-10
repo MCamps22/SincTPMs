@@ -566,7 +566,7 @@ def synchroTPMsPolinomial(k, n, l, learRule,weitTPMA, weitTPMB , countSync, k_va
 #Cicle Simulation
 
 
-if chosenAlgorithm == 3:
+if chosenAlgorithm == 1:
     k_values = get_k_values(n,k)
     
 for x in range (100):
