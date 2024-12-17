@@ -591,7 +591,7 @@ for x in range (100):
 
 
 
-if chosenAlgorithm == 1:
+if chosenAlgorithm == 3:
     file_path_resumen = f'Sync_Matrix_k{k}-N{n}-l{l}'
     
     if use_stimulus_binary:
@@ -623,7 +623,7 @@ elif chosenAlgorithm == 2:
         file_path_resumen_por_sync += '_non_binary' 
     file_path_resumen_por_sync += f'-{timestamp}.csv'
 
-elif chosenAlgorithm == 3:
+elif chosenAlgorithm == 1:
     file_path_resumen = f'Sync_Poli_k{k}-N{n}-l{l}'
     
     if use_stimulus_binary:
